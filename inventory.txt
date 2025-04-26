@@ -1,0 +1,20 @@
+[fortigate]
+192.168.11.204
+
+[fortigate:vars]
+ansible_user=admin
+ansible_password=admin
+ansible_connection=ssh
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+
+
+[cisco]
+192.168.11.190
+
+[cisco:vars]
+ansible_network_os=cisco.ios.ios
+ansible_connection=network_cli
+ansible_user=cisco
+ansible_password=cisco
+

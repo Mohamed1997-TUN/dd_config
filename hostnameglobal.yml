@@ -1,0 +1,11 @@
+---
+- name: Set FortiGate system global settings
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - vars/fortigate2.yml
+  tasks:
+    - name: Render system global config using Jinja2
+      ansible.builtin.template:
+        src: templates/system_global.j2
+        dest: /tmp/system_global.conf
