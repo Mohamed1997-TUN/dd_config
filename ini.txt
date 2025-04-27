@@ -1,0 +1,8 @@
+[fortigate]
+192.168.11.204
+
+[fortigate:vars]
+ansible_user=admin
+ansible_password=admin
+ansible_connection=ssh
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
