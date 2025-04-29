@@ -1,7 +1,6 @@
 - name: Configure firewall policy on FortiGate
   hosts: fortigate
   gather_facts: false
-  connection: httpapi
   tasks:
     - name: Configure policy FROM LAN TO WAN
       fortinet.fortios.fortios_firewall_policy:

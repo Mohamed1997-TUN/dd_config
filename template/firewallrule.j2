@@ -1,0 +1,13 @@
+config firewall policy
+    edit 1
+        set name {{ name }}
+        set srcintf {{ srcintf }}
+        set dstintf {{ dstintf }}
+        set action {{ action }}
+        set srcaddr {{ srcaddr }}
+        set dstaddr {{ dstaddr  }}
+        set schedule {{ schedule }}
+        set service {{ service }}
+        set nat {{ nat }}
+    next
+end

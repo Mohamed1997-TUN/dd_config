@@ -4,12 +4,12 @@
   gather_facts: false
 
   vars_files:
-    - vars/changename.vars
+    - vars/firewallrule.vars
 
   tasks:
     - name: Render CLI config into a local file
       ansible.builtin.template:
-        src: template/hostname_template.j2
+        src: template/firewallrule.j2
         dest: /tmp/fortigate_config.txt
       delegate_to: localhost
 
