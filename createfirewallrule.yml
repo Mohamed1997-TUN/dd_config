@@ -9,7 +9,7 @@
   tasks:
     - name: Render CLI config into a local file
       ansible.builtin.template:
-        src: template/firewallrule2.j2  # Your template
+        src: template/firewallrule.j2  # Your template
         dest: /tmp/fortigate_config.txt
       delegate_to: localhost
 
