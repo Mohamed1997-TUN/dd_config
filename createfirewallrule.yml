@@ -4,12 +4,12 @@
   gather_facts: false
 
   vars_files:
-    - vars/firewallrule.vars
+    - vars/firewallrule.vars  # Your variable file
 
   tasks:
     - name: Render CLI config into a local file
       ansible.builtin.template:
-        src: template/firewallrule2.j2
+        src: template/firewallrule2.j2  # Your template
         dest: /tmp/fortigate_config.txt
       delegate_to: localhost
 
@@ -22,7 +22,15 @@
     - name: Push CLI config to FortiGate
       ansible.builtin.raw: "{{ slurped_config['content'] | b64decode }}"
       register: result
+      # Only push if file doesn't contain error message
+      when: "'❌ Not allowed' not in (slurped_config['content'] | b64decode)"
+
+    - name: Display error message if present
+      ansible.builtin.debug:
+        msg: "{{ (slurped_config['content'] | b64decode) | regex_search('❌ Not allowed:.*') }}"
+      when: "'❌ Not allowed' in (slurped_config['content'] | b64decode)"
 
     - name: Display CLI result
       ansible.builtin.debug:
         var: result.stdout_lines
+      when: result is defined
