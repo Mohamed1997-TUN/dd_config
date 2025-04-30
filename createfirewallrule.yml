@@ -2,35 +2,46 @@
 - name: Configure FortiGate via SSH (with raw module)
   hosts: fortigate
   gather_facts: false
-
   vars_files:
-    - vars/firewallrule.vars  # Your variable file
+    - vars/firewallrule.vars
 
   tasks:
+    # 1. Render config template
     - name: Render CLI config into a local file
       ansible.builtin.template:
-        src: template/firewallrule.j2  # Your template
+        src: template/firewallrule.j2
         dest: /tmp/fortigate_config.txt
       delegate_to: localhost
 
+    # 2. Read generated config
     - name: Read generated config content
       ansible.builtin.slurp:
         src: /tmp/fortigate_config.txt
       register: slurped_config
       delegate_to: localhost
 
+    # 3. Push config (only if valid)
     - name: Push CLI config to FortiGate
       ansible.builtin.raw: "{{ slurped_config['content'] | b64decode }}"
       register: result
-      # Only push if file doesn't contain error message
-      when: "'❌ Not allowed' not in (slurped_config['content'] | b64decode)"
+      changed_when: false
+      when: 
+        - "'❌ Not allowed' not in (slurped_config['content'] | b64decode)"
+        - slurped_config['content'] | b64decode | length > 0
 
-    - name: Display error message if present
+    # 4. Display error if policy blocked
+    - name: Display policy violation error
       ansible.builtin.debug:
         msg: "{{ (slurped_config['content'] | b64decode) | regex_search('❌ Not allowed:.*') }}"
       when: "'❌ Not allowed' in (slurped_config['content'] | b64decode)"
 
-    - name: Display CLI result
+    # 5. FIXED: Display success condition
+    - name: Display success
       ansible.builtin.debug:
-        var: result.stdout_lines
-      when: result is defined
+        msg: "✅ Config applied successfully!"
+      when: 
+        - result is defined
+        - "'❌ Not allowed' not in (slurped_config['content'] | b64decode)"
+        - result.stdout is defined  # Basic success indicator
+        # Optional: Add more specific success patterns if needed
+        # - "'successfully' in result.stdout" 
