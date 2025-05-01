@@ -1,0 +1,10 @@
+config router static
+    edit {{ route_id }}
+        set dst {{ destination_network }} {{ netmask }}
+        set device "{{ interface }}"
+        {% if gateway is defined -%}set gateway {{ gateway }}
+        {% endif -%}{% if distance is defined -%}set distance {{ distance }}
+        {% endif -%}{% if comment is defined -%}set comment "{{ comment }}"
+        {% endif -%}
+    next
+end

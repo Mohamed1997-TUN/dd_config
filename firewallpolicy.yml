@@ -10,9 +10,9 @@
           policyid: 1
           name: "FROM LAN TO WAN"
           srcintf:
-            - name: "port2"
-          dstintf:
             - name: "port1"
+          dstintf:
+            - name: "port3"
           action: "accept"
           srcaddr:
             - name: "all"

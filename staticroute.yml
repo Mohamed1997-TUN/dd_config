@@ -1,0 +1,65 @@
+---
+- name: Configure Static Route on FortiGate
+  hosts: fortigate
+  gather_facts: false
+  vars_files:
+    - vars/staticroute.vars
+
+  tasks:
+    # 1. Generate config file
+    - name: Render CLI config into a local file
+      ansible.builtin.template:
+        src: template/staticroute.j2
+        dest: /tmp/fortigate_config.txt
+      delegate_to: localhost
+
+    # 2. Read config content
+    - name: Read generated config content
+      ansible.builtin.slurp:
+        src: /tmp/fortigate_config.txt
+      register: slurped_config
+      delegate_to: localhost
+
+    # 3. Push configuration
+    - name: Push CLI config to FortiGate
+      ansible.builtin.raw: |
+        execute - <<EOF
+        {{ slurped_config['content'] | b64decode }}
+        EOF
+      register: result
+      changed_when: false
+      ignore_errors: yes
+
+    # 4. DEBUG: Show raw output (enable when testing)
+    - name: Display FortiGate output
+      ansible.builtin.debug:
+        var: result.stdout
+      when: false  # Set to true when debugging
+
+    # 5. Set route status fact
+    - name: Determine route status
+      ansible.builtin.set_fact:
+        route_status: >-
+          {% if result is defined and result.stdout is defined %}
+            {% if "edit " + route_id|string + " created" in result.stdout or 
+                  "entry " + route_id|string + " added" in result.stdout %}
+              added
+            {% elif "edit " + route_id|string in result.stdout %}
+              exists
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+
+    # 6. Display appropriate message
+    - name: Show route status
+      ansible.builtin.debug:
+        msg: >-
+          {% if route_status == 'added' %}
+          ✅ NEW static route {{ route_id }} added successfully
+          {% elif route_status == 'exists' %}
+          ℹ️ Static route {{ route_id }} already exists
+          {% else %}
+          🔄 Configuration submitted (verify manually)
+          {% endif %}
+      when: route_status is defined
