@@ -3,7 +3,7 @@ config system interface
         set vdom "{{ vdom }}"
         set ip {{ ipv4_address }} {{ ipv4_netmask }}
         set allowaccess {{ allowaccess | join(' ') }}
-        set device-identification {{ device_identification }}
+        set device-identification enable
         set role {{ role }}
         set snmp-index {{ vlan_id }}
         set interface "{{ parent_interface }}"
