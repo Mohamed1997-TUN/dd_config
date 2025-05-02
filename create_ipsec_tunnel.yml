@@ -1,0 +1,28 @@
+---
+- name: Configure FortiGate via SSH (with raw module)
+  hosts: fortigate
+  gather_facts: false
+
+  vars_files:
+    - vars/ipsectunnel.vars
+
+  tasks:
+    - name: Render CLI config into a local file
+      ansible.builtin.template:
+        src: template/ipsectunnel.j2
+        dest: /tmp/fortigate_config.txt
+      delegate_to: localhost
+
+    - name: Read generated config content
+      ansible.builtin.slurp:
+        src: /tmp/fortigate_config.txt
+      register: slurped_config
+      delegate_to: localhost
+
+    - name: Push CLI config to FortiGate
+      ansible.builtin.raw: "{{ slurped_config['content'] | b64decode }}"
+      register: result
+
+    - name: Display CLI result
+      ansible.builtin.debug:
+        var: result.stdout_lines

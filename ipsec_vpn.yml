@@ -17,7 +17,7 @@
           comments: "VPN: from 200 to 129 [Created by VPN wizard]"
           auto_discovery_sender: "enable"
           auto_discovery_receiver: "enable"
-          remote_gw: "192.168.11.200"
+          remote_gw: "192.168.11.140"
           psksecret: "test12345"
 
     - name: Configure Phase 1 with Remote Gateway
@@ -28,7 +28,7 @@
           name: "from_129_to_200"
           phase1name: "from_200_to_129"
           proposal: "des-md5"
-          src_subnet: "192.168.30.0 255.255.255.0"
+          src_subnet: "10.10.10.0 255.255.255.0"
           dst_subnet: "20.20.20.0 255.255.255.0"
 
     - name: "from_129_to_200"
@@ -47,7 +47,7 @@
             - name: "all"
           dstaddr:
             - name: "all"
-          schedule: "weekly-schedule"
+          schedule: "always"
           service:
             - name: "ALL"
           nat: "enable"
@@ -68,7 +68,7 @@
             - name: "all"
           dstaddr:
             - name: "all"
-          schedule: "weekly-schedule"
+          schedule: "always"
           service:
             - name: "ALL"
           nat: "enable"

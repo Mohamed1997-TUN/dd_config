@@ -1,0 +1,52 @@
+config vpn ipsec phase1-interface
+    edit "{{ vpn.name }}"
+        set interface "{{ vpn.interface }}"
+        set peertype {{ vpn.peertype }}
+        set net-device {{ vpn.net_device | default('enable') }}
+        set proposal {{ vpn.proposal | default('aes256-sha256') }}
+        set comments "{{ vpn.comment }}"
+        set auto-discovery-sender {{ vpn.auto_discovery_sender | default('enable') }}
+        set auto-discovery-receiver {{ vpn.auto_discovery_receiver | default('enable') }}
+        set remote-gw {{ vpn.remote_gw }}
+        set psksecret {{ vpn.psk }}
+    next
+end
+
+config vpn ipsec phase2-interface
+    edit "{{ vpn.name }}"
+        set phase1name "{{ vpn.name }}"
+        set proposal {{ vpn.phase2_proposal | default('aes256-sha256') }}
+        set src-subnet {{ vpn.local_subnet }}
+        set dst-subnet {{ vpn.remote_subnet }}
+    next
+end
+
+config firewall policy
+    edit 1
+        set name "{{ vpn.name }}_outbound"
+        set srcintf {{ vpn.local_interface }}
+        set dstintf "{{ vpn.name }}"
+        set srcaddr all
+        set dstaddr all
+        set action accept
+        set schedule always
+        set service ALL
+    next
+    edit 2
+        set name "{{ vpn.name }}_inbound"
+        set srcintf "{{ vpn.name }}"
+        set dstintf {{ vpn.local_interface }}
+        set srcaddr all
+        set dstaddr all
+        set action accept
+        set schedule always
+        set service ALL
+    next
+end
+
+config router static
+    edit 1
+        set dst {{ vpn.remote_subnet }}
+        set device "{{ vpn.name }}"
+    next
+end
