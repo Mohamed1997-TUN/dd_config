@@ -5,8 +5,7 @@ config system interface
         set allowaccess {{ allowaccess | join(' ') }}
         set device-identification {{ device_identification }}
         set role {{ role }}
-        set snmp-index {{ vlan_id  }}
-        end
+        set snmp-index {{ vlan_id }}
         set interface "{{ parent_interface }}"
         set vlanid {{ vlan_id }}
     next
