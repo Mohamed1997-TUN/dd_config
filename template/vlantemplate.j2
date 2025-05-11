@@ -1,12 +1,12 @@
 config system interface
-    edit "{{ vlan.name }}"
+    edit "{{ name }}"
         set vdom "root"
-        set ip 192.{{ id_site }}.{{ vlan.id }}.1/24
-        set interface "{{ vlan.interface }}"
-        set vlanid {{ vlan.id }}
+        set ip 192.{{ id_site }}.{{ id }}.1/24
+        set interface "{{ interface }}"
+        set vlanid {{ id }}
         set type vlan
-        {% if vlan.allowaccess %}
-        set allowaccess {{ vlan.allowaccess | join(' ') }}
+        {% if allowaccess %}
+        set allowaccess {{ allowaccess | join(' ') }}
         {% endif %}
     next
 end
