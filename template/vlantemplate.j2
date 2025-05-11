@@ -1,4 +1,3 @@
-{% for vlan in vlans %}
 config system interface
     edit "{{ vlan.name }}"
         set vdom "root"
@@ -11,4 +10,3 @@ config system interface
         {% endif %}
     next
 end
-{% endfor %}
