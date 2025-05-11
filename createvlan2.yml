@@ -4,7 +4,7 @@
   gather_facts: false
 
   vars_files:
-    #- vars/vlantemplate.vars
+    - vars/vlantemplate.vars
 
   tasks:
     - name: Render CLI config into a local file
