@@ -2,7 +2,9 @@
 192.168.11.129
 
 [fortigate:vars]
+ansible_connection=ssh
 ansible_user=admin
 ansible_password=admin
-ansible_connection=ssh
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+# Force legacy crypto for FortiOS compatibility:
+ansible_ssh_args='-o KexAlgorithms=diffie-hellman-group14-sha1 -o Ciphers=aes128-cbc'
