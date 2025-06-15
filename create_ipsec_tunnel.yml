@@ -5,18 +5,26 @@
 
   vars:
     vpn:
-      name: "from_200_to_129"
-      interface: "port1"
-      peertype: "any"
-      local_interface: "port2"
-      local_subnet: "10.10.10.0 255.255.255.0"
-      remote_subnet: "20.20.20.0 255.255.255.0"
-      remote_gw: "192.168.11.140"
-      psk: "test12345"
-      comment: "VPN: from 200 to 129 [Created by Ansible]"
-      proposal: "des-md5"
-      phase2_proposal: "des-md5"
-      
+      name: "{{ vpn.name }}"
+      interface: "{{ vpn.interface }}"
+      peertype: "{{ vpn.peertype }}"
+      local_interface: "{{ vpn.local_interface }}"
+      local_subnet: "{{ vpn.local_subnet }}"
+      remote_subnet: "{{ vpn.remote_subnet }}"
+      remote_gw: "{{ vpn.remote_gw }}"
+      psk: "{{ vpn.psk }}"
+      comment: "{{ vpn.comment }}"
+      proposal: "{{ vpn.proposal }}"
+      phase2_proposal: "{{ vpn.phase2_proposal }}"
+
+  tasks:
+    - name: Show vpn variables (for debugging)
+      debug:
+        msg:
+          - "VPN Name: {{ vpn.name }}"
+          - "VPN Interface: {{ vpn.interface }}"
+          - "VPN Local Subnet: {{ vpn.local_subnet }}"
+          - "VPN Remote Subnet: {{ vpn.remote_subnet }}"
   tasks:
     - name: Render CLI config into a local file
       ansible.builtin.template:
