@@ -112,16 +112,3 @@
       register: vpn_status
       failed_when: "'ESTABLISHED' not in vpn_status.stdout"
       changed_when: false
-
-    # Display final status
-    - name: Show VPN configuration result
-      ansible.builtin.debug:
-        msg: |
-          VPN Configuration Summary:
-          - Name: {{ vpn.name }}
-          - Status: {% if 'ESTABLISHED' in vpn_status.stdout %}Active{% else %}Failed{% endif %}
-          - Local Subnet: {{ vpn.local_subnet }}
-          - Remote Subnet: {{ vpn.remote_subnet }}
-          - Remote Gateway: {{ vpn.remote_gw }}
-          - Phase1 Proposal: {{ vpn.proposal }}
-          - Phase2 Proposal: {{ vpn.phase2_proposal }}
