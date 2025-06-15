@@ -1,8 +1,7 @@
 ---
-- name: Configure FortiGate via SSH (with raw module)
+- name: Create VPN Tunnel on FortiGate
   hosts: fortigate
-  gather_facts: false
-
+  gather_facts: no
   vars:
     vpn:
       name: "{{ vpn.name }}"
@@ -25,23 +24,32 @@
           - "VPN Interface: {{ vpn.interface }}"
           - "VPN Local Subnet: {{ vpn.local_subnet }}"
           - "VPN Remote Subnet: {{ vpn.remote_subnet }}"
-  tasks:
-    - name: Render CLI config into a local file
+          
+    - name: Render VPN configuration using the template
       ansible.builtin.template:
-        src: template/ipsectunnel.j2
-        dest: /tmp/fortigate_config.txt
+        src: templates/ipsectunnel.j2
+        dest: /tmp/fortigate_vpn_config.txt
       delegate_to: localhost
 
-    - name: Read generated config content
+    - name: Read the generated VPN config content
       ansible.builtin.slurp:
-        src: /tmp/fortigate_config.txt
+        src: /tmp/fortigate_vpn_config.txt
       register: slurped_config
       delegate_to: localhost
 
-    - name: Push CLI config to FortiGate
+    - name: Push the VPN config to the FortiGate device
       ansible.builtin.raw: "{{ slurped_config['content'] | b64decode }}"
       register: result
+      changed_when: false
+      failed_when: result.rc != 0
 
-    - name: Display CLI result
-      ansible.builtin.debug:
-        var: result.stdout_lines
+    - name: Notify VPN Tunnel creation success
+      debug:
+        msg: "✅ The VPN Tunnel has been successfully created on the FortiGate device."
+      when: result is defined and result.rc == 0
+
+    - name: Cleanup temporary file
+      file:
+        path: /tmp/fortigate_vpn_config.txt
+        state: absent
+      delegate_to: localhost
