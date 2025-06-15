@@ -1,55 +1,28 @@
 ---
-- name: Create VPN Tunnel on FortiGate
+- name: Configure FortiGate via SSH (with raw module)
   hosts: fortigate
-  gather_facts: no
-  vars:
-    vpn:
-      name: "{{ vpn.name }}"
-      interface: "{{ vpn.interface }}"
-      peertype: "{{ vpn.peertype }}"
-      local_interface: "{{ vpn.local_interface }}"
-      local_subnet: "{{ vpn.local_subnet }}"
-      remote_subnet: "{{ vpn.remote_subnet }}"
-      remote_gw: "{{ vpn.remote_gw }}"
-      psk: "{{ vpn.psk }}"
-      comment: "{{ vpn.comment }}"
-      proposal: "{{ vpn.proposal }}"
-      phase2_proposal: "{{ vpn.phase2_proposal }}"
+  gather_facts: false
+
+  vars_files:
+    - vars/ipsectunnel.vars
 
   tasks:
-    - name: Show vpn variables (for debugging)
-      debug:
-        msg:
-          - "VPN Name: {{ vpn.name }}"
-          - "VPN Interface: {{ vpn.interface }}"
-          - "VPN Local Subnet: {{ vpn.local_subnet }}"
-          - "VPN Remote Subnet: {{ vpn.remote_subnet }}"
-          
-    - name: Render VPN configuration using the template
+    - name: Render CLI config into a local file
       ansible.builtin.template:
-        src: templates/ipsectunnel.j2
-        dest: /tmp/fortigate_vpn_config.txt
+        src: template/ipsectunnel.j2
+        dest: /tmp/fortigate_config.txt
       delegate_to: localhost
 
-    - name: Read the generated VPN config content
+    - name: Read generated config contents
       ansible.builtin.slurp:
-        src: /tmp/fortigate_vpn_config.txt
+        src: /tmp/fortigate_config.txt
       register: slurped_config
       delegate_to: localhost
 
-    - name: Push the VPN config to the FortiGate device
+    - name: Push CLI config to FortiGate
       ansible.builtin.raw: "{{ slurped_config['content'] | b64decode }}"
       register: result
-      changed_when: false
-      failed_when: result.rc != 0
 
-    - name: Notify VPN Tunnel creation success
-      debug:
-        msg: "✅ The VPN Tunnel has been successfully created on the FortiGate device."
-      when: result is defined and result.rc == 0
-
-    - name: Cleanup temporary file
-      file:
-        path: /tmp/fortigate_vpn_config.txt
-        state: absent
-      delegate_to: localhost
+    - name: Display CLI result
+      ansible.builtin.debug:
+        var: result.stdout_lines
