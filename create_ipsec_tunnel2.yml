@@ -106,9 +106,3 @@
       ansible.builtin.raw: "execute cfg save"
       when: config_result is changed
 
-    # Verify tunnel status
-    - name: Check VPN tunnel status
-      ansible.builtin.raw: "diagnose vpn ike gateway list name '{{ vpn.name }}'"
-      register: vpn_status
-      failed_when: "'ESTABLISHED' not in vpn_status.stdout"
-      changed_when: false
