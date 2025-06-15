@@ -3,7 +3,7 @@
   hosts: fortigate
   gather_facts: false
 
-  # Map AWX survey variables to your existing vpn structure
+  # Map AWX survey variables to VPN configuration
   vars:
     vpn:
       name: "{{ vpn_name }}"
@@ -17,37 +17,43 @@
       comment: "{{ vpn_comment | default('VPN configured via AWX') }}"
       proposal: "{{ vpn_proposal | default('des-md5') }}"
       phase2_proposal: "{{ vpn_phase2_proposal | default('des-md5') }}"
-      # Optional AWX-driven parameters
-      dhgrp: "{{ vpn_dhgrp | default(omit) }}"
-      pfs: "{{ vpn_pfs | default(omit) }}"
 
   tasks:
-    # Validate critical parameters
-    - name: Validate subnet formats
-      ansible.builtin.assert:
-        that:
-          - vpn.local_subnet | regex_match('^[0-9./ ]+$')
-          - vpn.remote_subnet | regex_match('^[0-9./ ]+$')
-          - vpn.remote_gw | regex_match('^[0-9.]+$')
-        fail_msg: "Invalid subnet or IP address format"
+    # Input validation using native Ansible filters
+    - name: Validate network formats
+      block:
+        - name: Verify local subnet format
+          ansible.builtin.assert:
+            that:
+              - vpn.local_subnet is regex('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3} \\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$')
+            fail_msg: "Invalid local subnet format. Use 'X.X.X.X Y.Y.Y.Y' (e.g. '10.0.0.0 255.255.255.0')"
 
-    # Generate config from template (if using templates)
-    - name: Render VPN configuration
-      ansible.builtin.template:
-        src: "templates/ipsectunnel.j2"
-        dest: "/tmp/fortigate_vpn_{{ vpn.name }}.cfg"
-      delegate_to: localhost
-      when: use_template | default(false) | bool
+        - name: Verify remote subnet format
+          ansible.builtin.assert:
+            that:
+              - vpn.remote_subnet is regex('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3} \\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$')
+            fail_msg: "Invalid remote subnet format. Use 'X.X.X.X Y.Y.Y.Y'"
 
-    # Push configuration directly (raw module alternative)
-    - name: Apply VPN configuration
+        - name: Verify remote gateway format
+          ansible.builtin.assert:
+            that:
+              - vpn.remote_gw is regex('^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$')
+            fail_msg: "Invalid remote gateway IP format. Use valid IPv4 address"
+
+      rescue:
+        - name: Show validation error
+          ansible.builtin.fail:
+            msg: "Configuration validation failed. See specific errors above."
+          when: ansible_failed_result is defined
+
+    # Apply configuration to FortiGate
+    - name: Configure IPSec Tunnel
       ansible.builtin.raw: |
         config vpn ipsec phase1-interface
           edit "{{ vpn.name }}"
             set interface "{{ vpn.interface }}"
             set peertype {{ vpn.peertype }}
             set proposal {{ vpn.proposal }}
-            {% if vpn.dhgrp is defined %}set dhgrp {{ vpn.dhgrp }}{% endif %}
             set remote-gw {{ vpn.remote_gw }}
             set psksecret {{ vpn.psk }}
             set comments "{{ vpn.comment }}"
@@ -58,7 +64,6 @@
           edit "{{ vpn.name }}"
             set phase1name "{{ vpn.name }}"
             set proposal {{ vpn.phase2_proposal }}
-            {% if vpn.pfs is defined %}set pfs {{ vpn.pfs }}{% endif %}
             set src-subnet {{ vpn.local_subnet }}
             set dst-subnet {{ vpn.remote_subnet }}
           next
@@ -93,16 +98,30 @@
             set device "{{ vpn.name }}"
           next
         end
-      register: config_push
-      changed_when: "'success' in config_push.stdout"
+      register: config_result
+      changed_when: "'success' in config_result.stdout"
 
     # Save configuration
-    - name: Save FortiGate config
+    - name: Save FortiGate configuration
       ansible.builtin.raw: "execute cfg save"
-      when: config_push is changed
+      when: config_result is changed
 
     # Verify tunnel status
-    - name: Check VPN status
+    - name: Check VPN tunnel status
       ansible.builtin.raw: "diagnose vpn ike gateway list name '{{ vpn.name }}'"
       register: vpn_status
       failed_when: "'ESTABLISHED' not in vpn_status.stdout"
+      changed_when: false
+
+    # Display final status
+    - name: Show VPN configuration result
+      ansible.builtin.debug:
+        msg: |
+          VPN Configuration Summary:
+          - Name: {{ vpn.name }}
+          - Status: {% if 'ESTABLISHED' in vpn_status.stdout %}Active{% else %}Failed{% endif %}
+          - Local Subnet: {{ vpn.local_subnet }}
+          - Remote Subnet: {{ vpn.remote_subnet }}
+          - Remote Gateway: {{ vpn.remote_gw }}
+          - Phase1 Proposal: {{ vpn.proposal }}
+          - Phase2 Proposal: {{ vpn.phase2_proposal }}
