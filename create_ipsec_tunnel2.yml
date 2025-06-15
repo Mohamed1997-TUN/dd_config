@@ -1,52 +1,45 @@
 ---
-- name: Configure FortiGate IPSec VPN
+- name: Configure FortiGate VPN via AWX Survey
   hosts: fortigate
   gather_facts: false
+
+  # Map AWX survey variables to your existing vpn structure
   vars:
-    # VPN Configuration Variables
     vpn:
-      name: "from_200_to_129"
-      interface: "port1"
-      peertype: "any"
-      local_interface: "port2"
-      local_subnet: "10.10.10.0 255.255.255.0"
-      remote_subnet: "20.20.20.0 255.255.255.0"
-      remote_gw: "192.168.11.140"
-      psk: "test12345"
-      comment: "VPN: from 200 to 129 [Created by Ansible]"
-      proposal: "des-md5"
-      phase2_proposal: "des-md5"
+      name: "{{ vpn_name }}"
+      interface: "{{ vpn_interface }}"
+      peertype: "{{ vpn_peertype | default('any') }}"
+      local_interface: "{{ vpn_local_interface }}"
+      local_subnet: "{{ vpn_local_subnet }}"
+      remote_subnet: "{{ vpn_remote_subnet }}"
+      remote_gw: "{{ vpn_remote_gw }}"
+      psk: "{{ vpn_psk }}"
+      comment: "{{ vpn_comment | default('VPN configured via AWX') }}"
+      proposal: "{{ vpn_proposal | default('des-md5') }}"
+      phase2_proposal: "{{ vpn_phase2_proposal | default('des-md5') }}"
+      # Optional AWX-driven parameters
+      dhgrp: "{{ vpn_dhgrp | default(omit) }}"
+      pfs: "{{ vpn_pfs | default(omit) }}"
 
   tasks:
-    # Task 1: Safely display VPN variables (without recursion)
-    - name: Display VPN configuration parameters
-      ansible.builtin.debug:
-        msg: |
-          VPN Configuration:
-          - Name: {{ vpn.name }}
-          - External Interface: {{ vpn.interface }}
-          - Local Interface: {{ vpn.local_interface }}
-          - Local Subnet: {{ vpn.local_subnet }}
-          - Remote Subnet: {{ vpn.remote_subnet }}
-          - Remote Gateway: {{ vpn.remote_gw }}
-          - Encryption: {{ vpn.proposal }} (Phase1) / {{ vpn.phase2_proposal }} (Phase2)
-          - Comment: {{ vpn.comment }}
+    # Validate critical parameters
+    - name: Validate subnet formats
+      ansible.builtin.assert:
+        that:
+          - vpn.local_subnet | regex_match('^[0-9./ ]+$')
+          - vpn.remote_subnet | regex_match('^[0-9./ ]+$')
+          - vpn.remote_gw | regex_match('^[0-9.]+$')
+        fail_msg: "Invalid subnet or IP address format"
 
-    # Task 2: Generate config file from template
-    - name: Generate FortiGate configuration
+    # Generate config from template (if using templates)
+    - name: Render VPN configuration
       ansible.builtin.template:
-        src: "template/ipsectunnel.j2"
+        src: "templates/ipsectunnel.j2"
         dest: "/tmp/fortigate_vpn_{{ vpn.name }}.cfg"
       delegate_to: localhost
-      register: config_generation
+      when: use_template | default(false) | bool
 
-    # Task 3: Display generated config (for verification)
-    - name: Show generated configuration
-      ansible.builtin.debug:
-        var: config_generation.content | b64decode
-      when: config_generation.changed
-
-    # Task 4: Push configuration to FortiGate
+    # Push configuration directly (raw module alternative)
     - name: Apply VPN configuration
       ansible.builtin.raw: |
         config vpn ipsec phase1-interface
@@ -54,6 +47,7 @@
             set interface "{{ vpn.interface }}"
             set peertype {{ vpn.peertype }}
             set proposal {{ vpn.proposal }}
+            {% if vpn.dhgrp is defined %}set dhgrp {{ vpn.dhgrp }}{% endif %}
             set remote-gw {{ vpn.remote_gw }}
             set psksecret {{ vpn.psk }}
             set comments "{{ vpn.comment }}"
@@ -64,6 +58,7 @@
           edit "{{ vpn.name }}"
             set phase1name "{{ vpn.name }}"
             set proposal {{ vpn.phase2_proposal }}
+            {% if vpn.pfs is defined %}set pfs {{ vpn.pfs }}{% endif %}
             set src-subnet {{ vpn.local_subnet }}
             set dst-subnet {{ vpn.remote_subnet }}
           next
@@ -101,7 +96,13 @@
       register: config_push
       changed_when: "'success' in config_push.stdout"
 
-    # Task 5: Save configuration permanently
-    - name: Save FortiGate configuration
+    # Save configuration
+    - name: Save FortiGate config
       ansible.builtin.raw: "execute cfg save"
       when: config_push is changed
+
+    # Verify tunnel status
+    - name: Check VPN status
+      ansible.builtin.raw: "diagnose vpn ike gateway list name '{{ vpn.name }}'"
+      register: vpn_status
+      failed_when: "'ESTABLISHED' not in vpn_status.stdout"
