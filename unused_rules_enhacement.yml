@@ -1,0 +1,67 @@
+- name: Get and convert unused FortiGate firewall rules since X days ago
+  hosts: fortigate
+  gather_facts: no
+  connection: local
+  vars:
+    cutoff_days: 10  # Modify this value according to the number of days
+    vdom: "root"
+    output_file: "/home/dhia/Desktop/createfirewall/jinjatest/unused_rules_{{ cutoff_days }}days.txt"
+
+  tasks:
+    - name: Get current epoch timestamp (controller-side)
+      command: date +%s
+      delegate_to: localhost
+      register: current_epoch_result
+
+    - name: Set current and cutoff epoch
+      set_fact:
+        current_epoch: "{{ current_epoch_result.stdout | int }}"
+        cutoff_epoch: "{{ (current_epoch_result.stdout | int) - (cutoff_days * 86400) }}"
+
+    - name: Get firewall policy stats from FortiGate
+      uri:
+        url: "http://{{ inventory_hostname }}/api/v2/monitor/firewall/policy?vdom={{ vdom }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ fortigate_token }}"
+        return_content: yes
+        validate_certs: no
+      register: policy_response
+
+    - name: Filter rules unused since cutoff OR never used
+      set_fact:
+        unused_rules: >-
+          [{% for rule in policy_response.json.results %}
+            {% set last_used = (rule.get('last_used', 0) | int) %}
+            {% if last_used == 0 or last_used < (cutoff_epoch | int) %}
+              {{ rule | combine({'last_used': last_used}) }}{% if not loop.last %},{% endif %}
+            {% endif %}
+          {% endfor %}]
+
+    - name: Convert 'Last Used' epoch timestamps to readable date (day only)
+      set_fact:
+        converted_unused_rules: >-
+          [{% for rule in unused_rules %}
+            {% if rule.last_used != 0 %}
+              {% set human_date = lookup('pipe', 'date -d @' ~ rule.last_used ~ ' "+%Y-%m-%d"') %}
+              {% set rule_with_date = rule | combine({'last_used': human_date}) %}
+              {{ rule_with_date }}{% if not loop.last %},{% endif %}
+            {% else %}
+              {% set rule_with_na = rule | combine({'last_used': 'N/A'}) %}
+              {{ rule_with_na }}{% if not loop.last %},{% endif %}
+            {% endif %}
+          {% endfor %}]
+
+    - name: Save converted rules to file
+      copy:
+        content: |
+          {% for rule in converted_unused_rules %}
+          ID: {{ rule.policyid }},
+          Last Used: {{ rule.last_used }},
+          Bytes: {{ rule.bytes | default('N/A') }},
+          Hit Count: {{ rule.hit_count | default('0') }},
+          Comments: {{ rule.comments | default('N/A') }}
+          -----------------------------
+          {% endfor %}
+        dest: "{{ output_file }}"
+      delegate_to: localhost
