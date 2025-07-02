@@ -1,0 +1,41 @@
+---
+- name: Convert epoch timestamps to human-readable dates (day only)
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    input_file: "/home/dhia/Desktop/createfirewall/jinjatest/unused_rules_2days.txt"
+    output_file: "/home/dhia/Desktop/createfirewall/jinjatest/converted_unused_rules_2days.txt"
+
+  tasks:
+    - name: Read file content
+      slurp:
+        src: "{{ input_file }}"
+      register: file_data
+
+    - name: Split file into lines
+      set_fact:
+        raw_lines: "{{ file_data.content | b64decode | split('\n') }}"
+
+    - name: Convert 'Last Used' epoch timestamps to readable date (day only)
+      set_fact:
+        converted_lines: "{{ converted_lines | default([]) + [converted_line] }}"
+      vars:
+        epoch_match: "{{ item | regex_replace('.*Last Used: ([0-9]{10}).*', '\\1') }}"
+        epoch: "{{ epoch_match | int }}"
+        human_date: "{{ lookup('pipe', 'date -d @' ~ epoch | string ~ ' \"+%Y-%m-%d\"') if epoch | length > 0 else '' }}"
+        converted_line: >-
+          {% if epoch and human_date %}
+            {{ item | regex_replace('Last Used: [0-9]+', 'Last Used: ' ~ human_date) }}
+          {% else %}
+            {{ item }}
+          {% endif %}
+      loop: "{{ raw_lines }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Write final output with converted dates
+      copy:
+        dest: "{{ output_file }}"
+        content: "{{ converted_lines | join('\n') }}"
+

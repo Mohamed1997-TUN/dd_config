@@ -1,0 +1,30 @@
+ID: 1
+Name: from_200_to_129_outbound
+Src: port2
+Dst: from_200_to_129
+Source Addr: all
+Dest Addr: all
+Action: accept
+Service: ALL
+Comment: 
+------------------------
+ID: 3
+Name: wdwqdw
+Src: port3
+Dst: port1
+Source Addr: all
+Dest Addr: all
+Action: accept
+Service: ALL_ICMP
+Comment: 
+------------------------
+ID: 4
+Name: gugiugiu
+Src: port5
+Dst: port2
+Source Addr: all
+Dest Addr: all
+Action: accept
+Service: ALL
+Comment: 
+------------------------

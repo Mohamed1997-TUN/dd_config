@@ -1,0 +1,14 @@
+[fortigate]
+192.168.11.140
+
+
+[fortigate:vars]
+ansible_user=admin
+ansible_password=admin
+ansible_httpapi_use_ssl=no  # Use HTTP, not HTTPS
+ansible_httpapi_validate_certs=no  # Disable certificate validation
+ansible_httpapi_port=80  # Use port 80 for HTTP
+ansible_network_os=fortinet.fortios.fortios
+ansible_connection=httpapi
+ansible_httpapi_token=HjGc8xyN3bq6zNH6k430qtff6znbzN
+fortigate_token=HjGc8xyN3bq6zNH6k430qtff6znbzN

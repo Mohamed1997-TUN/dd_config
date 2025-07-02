@@ -1,0 +1,69 @@
+---
+- name: Get FortiGate firewall rules without comments
+  hosts: fortigate
+  gather_facts: no
+  connection: local
+
+  vars:
+    vdom: "root"
+    output_file: "/home/dhia/Desktop/createfirewall/jinjatest/rules_without_comments.txt"
+
+  tasks:
+
+    - name: Login to FortiGate and get session cookie
+      uri:
+        url: "http://{{ inventory_hostname }}/logincheck"
+        method: POST
+        body: "username={{ ansible_user }}&secretkey={{ ansible_password }}"
+        body_format: form-urlencoded
+        return_content: yes
+        validate_certs: no
+      register: login_response
+
+    - name: Extract session cookie
+      set_fact:
+        session_cookie: "{{ login_response.set_cookie.split(';')[0] }}"
+
+    - name: Get firewall policies
+      uri:
+        url: "http://{{ inventory_hostname }}/api/v2/cmdb/firewall/policy?vdom={{ vdom }}"
+        method: GET
+        headers:
+          Cookie: "{{ session_cookie }}"
+        return_content: yes
+        validate_certs: no
+      register: policies_response
+
+    - name: Filter rules without comments
+      set_fact:
+        rules_without_comments: >-
+          {{
+            policies_response.json.results
+            | selectattr('comments', 'equalto', '') 
+            | list
+          }}
+
+    - name: Save rules without comments to file
+      copy:
+        content: |
+          {% for rule in rules_without_comments %}
+          ID: {{ rule.policyid }}
+          Name: {{ rule.name }}
+          Src: {{ rule.srcintf | map(attribute='name') | join(', ') }}
+          Dst: {{ rule.dstintf | map(attribute='name') | join(', ') }}
+          Source Addr: {{ rule.srcaddr | map(attribute='name') | join(', ') }}
+          Dest Addr: {{ rule.dstaddr | map(attribute='name') | join(', ') }}
+          Action: {{ rule.action }}
+          Service: {{ rule.service | map(attribute='name') | join(', ') }}
+          Comment: {{ rule.comments | default('') }}
+          ------------------------
+          {% endfor %}
+        dest: "{{ output_file }}"
+        mode: '0644'
+      delegate_to: localhost
+
+
+    - name: Show result path
+      debug:
+        msg: "Firewall rules without comments saved to {{ output_file }}"
+

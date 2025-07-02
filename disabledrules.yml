@@ -1,0 +1,41 @@
+- name: Detect disabled FortiGate firewall rules
+  hosts: fortigate
+  gather_facts: no
+  connection: local
+  vars:
+    vdom: "root"
+    output_file: "/home/dhia/Desktop/createfirewall/jinjatest/disabled_rules.txt"
+
+  tasks:
+    - name: Get firewall policy list from FortiGate
+      uri:
+        url: "http://{{ inventory_hostname }}/api/v2/cmdb/firewall/policy?vdom={{ vdom }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ hostvars[inventory_hostname]['ansible_httpapi_token'] }}"
+        return_content: yes
+        validate_certs: no
+      register: firewall_policies
+
+    - name: Extract disabled rules
+      set_fact:
+        disabled_rules: >-
+          [{% for rule in firewall_policies.json.results if rule.status == 'disable' %}
+            {{ rule }}{% if not loop.last %},{% endif %}
+          {% endfor %}]
+
+    - name: Save disabled rules to file
+      copy:
+        content: |
+          {% for rule in disabled_rules %}
+          ID: {{ rule.policyid }},
+          Name: {{ rule.name | default('N/A') }},
+          Source: {{ rule.srcintf | default([]) | map(attribute='name') | join(', ') }},
+          Destination: {{ rule.dstintf | default([]) | map(attribute='name') | join(', ') }},
+          Status: {{ rule.status }},
+          Comments: {{ rule.comments | default('') }}
+          -----------------------------
+          {% endfor %}
+        dest: "{{ output_file }}"
+      delegate_to: localhost
+

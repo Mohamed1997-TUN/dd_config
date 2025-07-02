@@ -1,0 +1,44 @@
+---
+- name: Get unused FortiGate firewall rules using API (with token from inventory)
+  hosts: fortigate
+  gather_facts: no
+  connection: local  # API request is from Ansible controller, not remote SSH
+  vars:
+    output_file: "/home/dhia/Desktop/createfirewall/jinjatest/unused_rules_bytes_0.txt"
+    vdom: "root"
+
+  tasks:
+    - name: Get firewall policy stats from FortiGate via API
+      uri:
+        url: "http://{{ inventory_hostname }}/api/v2/monitor/firewall/policy?vdom={{ vdom }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ hostvars[inventory_hostname]['ansible_httpapi_token'] }}"
+        return_content: yes
+        validate_certs: no
+      register: policy_response
+
+    - name: Debug raw API response (for verification)
+      debug:
+        var: policy_response.json.results
+      # Comment out this task after verifying the structure
+
+    - name: Extract unused rules with bytes == 0
+      set_fact:
+        unused_rules: >-
+          {{ policy_response.json.results
+             | selectattr('bytes', 'equalto', 0)
+             | list }}
+
+    - name: Save unused rules to file
+      copy:
+        content: |
+          {% for rule in unused_rules %}
+          ID: {{ rule.policyid }},
+          Action: {{ rule.action | default('N/A') }},
+          Bytes: {{ rule.bytes | default('N/A') }},
+          Comments: {{ rule.comments | default('N/A') }}
+          {% endfor %}
+        dest: "{{ output_file }}"
+      delegate_to: localhost
+
