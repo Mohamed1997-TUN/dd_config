@@ -1,0 +1,21 @@
+- name: Push VLAN config over SSH
+  hosts: fortigate
+  gather_facts: no
+  vars_files:
+    - vars/vlanfirewall.vars
+
+  tasks:
+    - name: Generate FortiGate VLAN config locally
+      template:
+        src: template/vlantemplate.j2
+        dest: /tmp/vlan_config.txt
+      delegate_to: localhost
+
+    - name: Read rendered config
+      slurp:
+        src: /tmp/vlan_config.txt
+      register: rendered_config
+      delegate_to: localhost
+
+    - name: Push config via SSH using raw
+      raw: "{{ rendered_config.content | b64decode }}"
