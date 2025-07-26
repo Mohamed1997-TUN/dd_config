@@ -1,0 +1,23 @@
+- name: Create VLAN interface on FortiGate
+  hosts: fortigate
+  gather_facts: no
+  collections:
+    - fortinet.fortios
+
+  vars_files:
+    - vars/vlans.vars
+
+  tasks:
+    - name: Create VLAN interface
+      fortios_system_interface:
+        vdom: "{{ vdom_name }}"
+        access_token: "{{ fortigate_token }}"
+        state: present
+        system_interface:
+          name: "{{ vlan_name }}"
+          ip: "{{ ip_address }} {{ subnet_mask }}"
+          allowaccess: "{{ allowaccess }}"
+          device_identification: enable
+          role: lan
+          interface: "{{ physical_interface }}"
+          vlanid: "{{ vlan_id }}"

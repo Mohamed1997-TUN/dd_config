@@ -1,0 +1,28 @@
+---
+- name: Configure DNS on FortiGate using Jinja2
+  hosts: fortigate
+  gather_facts: false
+
+  vars_files:
+    - vars/vlans_under_agg.vars   # Make sure 'site_id' is defined here
+
+  tasks:
+    - name: Render DNS config using Jinja2
+      template:
+        src: template/dns_config.j2
+        dest: /tmp/dns_config.txt
+      delegate_to: localhost
+
+    - name: Read rendered config
+      slurp:
+        src: /tmp/dns_config.txt
+      register: dns_config
+      delegate_to: localhost
+
+    - name: Push DNS config to FortiGate
+      raw: "{{ dns_config['content'] | b64decode }}"
+      register: result
+
+    - name: Show result from FortiGate
+      debug:
+        var: result.stdout_lines

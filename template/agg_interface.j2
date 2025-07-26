@@ -1,0 +1,18 @@
+config vdom
+edit {{ vdom_name }}
+    config system interface
+        edit "{{ interface_name }}"
+            set vdom "{{ vdom_name }}"
+            set type aggregate
+            set member {{ member_ports | join(' ') }}
+            set device-identification enable
+            set lldp-transmission enable
+            set role lan
+            config ipv6
+                set ip6-send-adv enable
+                set ip6-other-flag enable
+            end
+        next
+    end
+end
+

@@ -1,0 +1,28 @@
+---
+- name: Configure single VLAN interface on FortiGate
+  hosts: fortigate
+  gather_facts: false
+
+  vars_files:
+    - vars/vlans_under_agg.vars
+
+  tasks:
+    - name: Render VLAN config
+      template:
+        src: template/vlans_under_agg.j2
+        dest: /tmp/vlanunderagg.txt
+      delegate_to: localhost
+
+    - name: Read rendered config
+      slurp:
+        src: /tmp/vlanunderagg.txt
+      register: vlan_config
+      delegate_to: localhost
+
+    - name: Push VLAN config to FortiGate
+      raw: "{{ vlan_config['content'] | b64decode }}"
+      register: result
+
+    - name: Show result
+      debug:
+        var: result.stdout_lines

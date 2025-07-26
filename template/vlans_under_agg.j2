@@ -1,0 +1,29 @@
+{% for vlan in vlans %}
+config system interface
+    edit "{{ vlan.name }}"
+        set vdom "{{ vlan.vdom }}"
+        set ip 10.{{ id_site }}.{{ vlan.ip_third_octet }}.1 {{ vlan.subnet_mask }}
+        set allowaccess {{ vlan.allowaccess | join(' ') }}
+        set role lan
+        set interface "{{ vlan.interface }}"
+        set vlanid {{ vlan.id }}
+        set dhcp-relay-service enable
+        set dhcp-relay-ip 10.{{ id_site }}.3.3 10.{{ id_site }}.3.2
+    next
+end
+{% endfor %}
+
+{# Group VLANs by zone #}
+{% set zones = {} %}
+{% for vlan in vlans %}
+  {% set _ = zones.setdefault(vlan.zone_name, []).append(vlan.name) %}
+{% endfor %}
+
+{% for zone_name, interfaces in zones.items() %}
+config system zone
+    edit "{{ zone_name }}"
+        set interface {{ interfaces | join(' ') }}
+    next
+end
+{% endfor %}
+

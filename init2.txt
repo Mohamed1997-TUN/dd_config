@@ -10,5 +10,5 @@ ansible_httpapi_validate_certs=no  # Disable certificate validation
 ansible_httpapi_port=80  # Use port 80 for HTTP
 ansible_network_os=fortinet.fortios.fortios
 ansible_connection=httpapi
-ansible_httpapi_token=HjGc8xyN3bq6zNH6k430qtff6znbzN
-fortigate_token=HjGc8xyN3bq6zNH6k430qtff6znbzN
+ansible_httpapi_token=n0pNQ84y1fs1kmqss6grx07Qd1jgnc
+fortigate_token=n0pNQ84y1fs1kmqss6grx07Qd1jgnc
